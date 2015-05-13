@@ -13,7 +13,7 @@
 package main
 
 import (
-  "github.com/nsf/termbox-go"
+	"github.com/nsf/termbox-go"
 	"math"
 	"time"
 )
@@ -50,11 +50,10 @@ func newScreen(d int) *Screen {
 func (screen Screen) render() {
 	for i, _ := range screen.data {
 		for j, _ := range screen.data[i] {
-			termbox.SetCell(i, j, rune(screen.data[i][j]), 120, 0)			
+			termbox.SetCell(i, j, rune(screen.data[i][j]), 120, 0)
 		}
 	}
 
-	
 }
 
 func (screen *Screen) clear() {
@@ -115,7 +114,6 @@ func (screen *Screen) computeFrame(A, B, K1 float64) {
 					(*zbuffer)[yp][xp] = ooz
 					luminance_index := int(L * 8.0) // this brings L into the range 0..11 (8*sqrt(2) = 11.3)
 					// now we lookup the character corresponding to the luminance and plot it in our output:
-					//screen.data[yp][xp] = ".,-~:;=!*#$@"[luminance_index]
 					screen.data[yp][xp] = ".,-~:;=!*#$@"[luminance_index]
 				}
 			}
@@ -124,32 +122,11 @@ func (screen *Screen) computeFrame(A, B, K1 float64) {
 }
 
 // return the min of two uint16 and convert to int
-func min(x, y uint16) int {
+func min(x, y int) int {
 	if x < y {
 		return int(x)
 	}
 	return int(y)
-}
-
-
-func animate(screen *Screen) {
-	// Calculate K1 based on screen size: the maximum x-distance occurs roughly at
-	// the edge of the torus, which is at x=R1+R2, z=0.  we want that to be
-	// displaced 3/8ths of the width of the screen, which is 3/4th of the way from
-	// the center to the side of the screen.
-	// screen_width*3/8 = K1*(R1+R2)/(K2+0)
-	// screen_width*K2*3/(8*(R1+R2)) = K1
-	A, B, K1 := 1.0, 1.0, float64(screen.dim)*K2*3.0/(8.0*(R1+R2))
-
-	c := time.Tick(frame_delay * time.Millisecond) // create timer channel
-	for range c {
-		A += 0.07
-		B += 0.03
-		screen.computeFrame(A, B, K1)
-		screen.render()
-		termbox.Flush()
-
-	}
 }
 
 func main() {
@@ -158,16 +135,25 @@ func main() {
 		panic(err)
 	}
 	defer termbox.Close()
-	
+
 	event_queue := make(chan termbox.Event)
 	go func() {
 		for {
 			event_queue <- termbox.PollEvent()
 		}
 	}()
+	w, h := termbox.Size()
+	dim := min(w, h)
+	screen := newScreen(dim)
+	termbox.SetOutputMode(termbox.OutputGrayscale)
 
-    screen := newScreen(int (80))
-    termbox.SetOutputMode(termbox.OutputGrayscale)
+	// Calculate K1 based on screen size: the maximum x-distance occurs roughly at
+	// the edge of the torus, which is at x=R1+R2, z=0.  we want that to be
+	// displaced 3/8ths of the width of the screen, which is 3/4th of the way from
+	// the center to the side of the screen.
+	// screen_width*3/8 = K1*(R1+R2)/(K2+0)
+	// screen_width*K2*3/(8*(R1+R2)) = K1
+	A, B, K1 := 1.0, 1.0, float64(screen.dim)*K2*3.0/(8.0*(R1+R2))
 
 loop:
 	for {
@@ -177,9 +163,12 @@ loop:
 				break loop
 			}
 		default:
-	    animate(screen)
+			A += 0.07
+			B += 0.03
+			screen.computeFrame(A, B, K1)
+			screen.render()
+			termbox.Flush()
 			time.Sleep(33 * time.Millisecond)
 		}
 	}
 }
-
