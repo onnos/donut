@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-const frame_delay = 20
+const frame_delay = 10
 const theta_spacing = 0.01
 const phi_spacing = 0.01
 
@@ -52,23 +52,23 @@ func (screen Screen) render(asciimode bool) {
 		for j, _ := range screen.data[i] {
 			// map our ascii characters to grayscale luminance levels for termbox
 			var lindex = map[byte]int{
-				'.':5,
-				',':7,
-				'-':9,
-				'~':11,
-				':':13,
-				';':15,
-				'=':17,
-				'!':18,
-				'*':19,
-				'#':20,
-				'$':22,
-				'@':24,
+				'.': 5,
+				',': 7,
+				'-': 9,
+				'~': 11,
+				':': 13,
+				';': 15,
+				'=': 17,
+				'!': 18,
+				'*': 19,
+				'#': 20,
+				'$': 22,
+				'@': 24,
 			}
 			if asciimode {
-				termbox.SetCell(i, j, rune(screen.data[i][j]), 0, 0)
+				termbox.SetCell(i, j, rune(screen.data[i][j]), termbox.Attribute(lindex[screen.data[i][j]]), 0)
 			} else {
-					termbox.SetCell(i, j, ' ', 0, termbox.Attribute(lindex[screen.data[i][j]]))
+				termbox.SetCell(i, j, ' ', 0, termbox.Attribute(lindex[screen.data[i][j]]))
 			}
 		}
 	}
@@ -92,7 +92,6 @@ func (screen *Screen) computeFrame(A, B, K1 float64) {
 	cosB := math.Cos(B)
 	sinB := math.Sin(B)
 
-	//screen.clear()
 	zbuffer := newZBuffer(screen.dim)
 
 	// theta goes around the cross-sectional circle of a torus
