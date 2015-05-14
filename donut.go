@@ -1,14 +1,14 @@
-//
-// donut.go
-//
-// An implementation in Go of Andy Sloan's donut.c
+// Go Donut!
 //
 // originals:
-// http://www.a1k0n.net/2011/07/20/donut-math.html
-// https://github.com/GaryBoone/GoDonut
-// To run:
-//    $ go run donut.go
+// http://www.a1k0n.net/2011/07/20/donut-math.html  (original by Andy Sloane)
+// https://github.com/GaryBoone/GoDonut             (donut.go by Gary Boone)
 //
+// This version tweaks the constants a bit (to lessen the "transparent" effect), uses
+// Termbox for rendering, makes the loop interruptable and enables a sort-of-shaded mode.
+// Hint: hit enter while running. ESCape to quit.
+//
+// 20150514 - Onno Siemens
 
 package main
 
@@ -18,13 +18,13 @@ import (
 	"time"
 )
 
-const frame_delay = 33 // ie, 30 fps
-const theta_spacing = 0.07
-const phi_spacing = 0.02
+const frame_delay = 20
+const theta_spacing = 0.01
+const phi_spacing = 0.01
 
 const R1 = 1.0
 const R2 = 2.0
-const K2 = 5.0
+const K2 = 6.0
 
 type Screen struct {
 	dim  int
@@ -47,12 +47,45 @@ func newScreen(d int) *Screen {
 	return &Screen{d, b}
 }
 
-func (screen Screen) render() {
+
+func (screen Screen) render(asciimode bool) {
 	for i, _ := range screen.data {
 		for j, _ := range screen.data[i] {
-			termbox.SetCell(i, j, rune(screen.data[i][j]), 120, 0)
+				if asciimode {
+					termbox.SetCell(i, j, rune(screen.data[i][j]), 0, 0)
+				} else {
+					switch screen.data[i][j] {
+						case '.':
+							termbox.SetCell(i, j, ' ', 0, 5)
+						case ',':
+							termbox.SetCell(i, j, ' ', 0, 7)
+						case '-':
+							termbox.SetCell(i, j, ' ', 0, 9)
+						case '~':
+							termbox.SetCell(i, j, ' ', 0, 11)
+						case ':':
+							termbox.SetCell(i, j, ' ', 0, 13)
+						case ';':
+							termbox.SetCell(i, j, ' ', 0, 15)
+						case '=':
+							termbox.SetCell(i, j, ' ', 0, 17)
+						case '!':
+							termbox.SetCell(i, j, ' ', 0, 18)
+						case '*':
+							termbox.SetCell(i, j, ' ', 0, 19)
+						case '#':
+							termbox.SetCell(i, j, ' ', 0, 20)
+						case '$':
+							termbox.SetCell(i, j, ' ', 0, 22)
+						case '@':
+							termbox.SetCell(i, j, ' ', 0, 24)
+						default:
+							termbox.SetCell(i, j, ' ', 1, 0)
+					}
+				}
 		}
 	}
+	screen.clear()
 
 }
 
@@ -72,7 +105,7 @@ func (screen *Screen) computeFrame(A, B, K1 float64) {
 	cosB := math.Cos(B)
 	sinB := math.Sin(B)
 
-	screen.clear()
+	//screen.clear()
 	zbuffer := newZBuffer(screen.dim)
 
 	// theta goes around the cross-sectional circle of a torus
@@ -121,14 +154,6 @@ func (screen *Screen) computeFrame(A, B, K1 float64) {
 	}
 }
 
-// return the min of two uint16 and convert to int
-func min(x, y int) int {
-	if x < y {
-		return int(x)
-	}
-	return int(y)
-}
-
 func main() {
 	err := termbox.Init()
 	if err != nil {
@@ -143,9 +168,10 @@ func main() {
 		}
 	}()
 	w, h := termbox.Size()
-	dim := min(w, h)
+	dim := int(math.Min(float64(w), float64(h)))
 	screen := newScreen(dim)
 	termbox.SetOutputMode(termbox.OutputGrayscale)
+    asciimode := true
 
 	// Calculate K1 based on screen size: the maximum x-distance occurs roughly at
 	// the edge of the torus, which is at x=R1+R2, z=0.  we want that to be
@@ -162,13 +188,17 @@ loop:
 			if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEsc {
 				break loop
 			}
+			if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEnter {
+				asciimode = !asciimode
+			}
+
 		default:
 			A += 0.07
 			B += 0.03
 			screen.computeFrame(A, B, K1)
-			screen.render()
+			screen.render(asciimode)
 			termbox.Flush()
-			time.Sleep(33 * time.Millisecond)
+			time.Sleep(frame_delay * time.Millisecond)
 		}
 	}
 }
