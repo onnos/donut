@@ -47,42 +47,41 @@ func newScreen(d int) *Screen {
 	return &Screen{d, b}
 }
 
-
 func (screen Screen) render(asciimode bool) {
 	for i, _ := range screen.data {
 		for j, _ := range screen.data[i] {
-				if asciimode {
-					termbox.SetCell(i, j, rune(screen.data[i][j]), 0, 0)
-				} else {
-					switch screen.data[i][j] {
-						case '.':
-							termbox.SetCell(i, j, ' ', 0, 5)
-						case ',':
-							termbox.SetCell(i, j, ' ', 0, 7)
-						case '-':
-							termbox.SetCell(i, j, ' ', 0, 9)
-						case '~':
-							termbox.SetCell(i, j, ' ', 0, 11)
-						case ':':
-							termbox.SetCell(i, j, ' ', 0, 13)
-						case ';':
-							termbox.SetCell(i, j, ' ', 0, 15)
-						case '=':
-							termbox.SetCell(i, j, ' ', 0, 17)
-						case '!':
-							termbox.SetCell(i, j, ' ', 0, 18)
-						case '*':
-							termbox.SetCell(i, j, ' ', 0, 19)
-						case '#':
-							termbox.SetCell(i, j, ' ', 0, 20)
-						case '$':
-							termbox.SetCell(i, j, ' ', 0, 22)
-						case '@':
-							termbox.SetCell(i, j, ' ', 0, 24)
-						default:
-							termbox.SetCell(i, j, ' ', 1, 0)
-					}
+			if asciimode {
+				termbox.SetCell(i, j, rune(screen.data[i][j]), 0, 0)
+			} else {
+				switch screen.data[i][j] {
+				case '.':
+					termbox.SetCell(i, j, ' ', 0, 5)
+				case ',':
+					termbox.SetCell(i, j, ' ', 0, 7)
+				case '-':
+					termbox.SetCell(i, j, ' ', 0, 9)
+				case '~':
+					termbox.SetCell(i, j, ' ', 0, 11)
+				case ':':
+					termbox.SetCell(i, j, ' ', 0, 13)
+				case ';':
+					termbox.SetCell(i, j, ' ', 0, 15)
+				case '=':
+					termbox.SetCell(i, j, ' ', 0, 17)
+				case '!':
+					termbox.SetCell(i, j, ' ', 0, 18)
+				case '*':
+					termbox.SetCell(i, j, ' ', 0, 19)
+				case '#':
+					termbox.SetCell(i, j, ' ', 0, 20)
+				case '$':
+					termbox.SetCell(i, j, ' ', 0, 22)
+				case '@':
+					termbox.SetCell(i, j, ' ', 0, 24)
+				default:
+					termbox.SetCell(i, j, ' ', 1, 0)
 				}
+			}
 		}
 	}
 	screen.clear()
@@ -171,7 +170,7 @@ func main() {
 	dim := int(math.Min(float64(w), float64(h)))
 	screen := newScreen(dim)
 	termbox.SetOutputMode(termbox.OutputGrayscale)
-    asciimode := true
+	asciimode := true
 
 	// Calculate K1 based on screen size: the maximum x-distance occurs roughly at
 	// the edge of the torus, which is at x=R1+R2, z=0.  we want that to be
