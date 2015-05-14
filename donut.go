@@ -50,37 +50,25 @@ func newScreen(d int) *Screen {
 func (screen Screen) render(asciimode bool) {
 	for i, _ := range screen.data {
 		for j, _ := range screen.data[i] {
+			// map our ascii characters to grayscale luminance levels for termbox
+			var lindex = map[byte]int{
+				'.':5,
+				',':7,
+				'-':9,
+				'~':11,
+				':':13,
+				';':15,
+				'=':17,
+				'!':18,
+				'*':19,
+				'#':20,
+				'$':22,
+				'@':24,
+			}
 			if asciimode {
 				termbox.SetCell(i, j, rune(screen.data[i][j]), 0, 0)
 			} else {
-				switch screen.data[i][j] {
-				case '.':
-					termbox.SetCell(i, j, ' ', 0, 5)
-				case ',':
-					termbox.SetCell(i, j, ' ', 0, 7)
-				case '-':
-					termbox.SetCell(i, j, ' ', 0, 9)
-				case '~':
-					termbox.SetCell(i, j, ' ', 0, 11)
-				case ':':
-					termbox.SetCell(i, j, ' ', 0, 13)
-				case ';':
-					termbox.SetCell(i, j, ' ', 0, 15)
-				case '=':
-					termbox.SetCell(i, j, ' ', 0, 17)
-				case '!':
-					termbox.SetCell(i, j, ' ', 0, 18)
-				case '*':
-					termbox.SetCell(i, j, ' ', 0, 19)
-				case '#':
-					termbox.SetCell(i, j, ' ', 0, 20)
-				case '$':
-					termbox.SetCell(i, j, ' ', 0, 22)
-				case '@':
-					termbox.SetCell(i, j, ' ', 0, 24)
-				default:
-					termbox.SetCell(i, j, ' ', 1, 0)
-				}
+					termbox.SetCell(i, j, ' ', 0, termbox.Attribute(lindex[screen.data[i][j]]))
 			}
 		}
 	}
