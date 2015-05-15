@@ -18,12 +18,12 @@ import (
 )
 
 const frame_delay = 10
-const theta_spacing = 0.01
-const phi_spacing = 0.01
+const theta_spacing = 0.02
+const phi_spacing = 0.02
 
-const R1 = 1.0
-const R2 = 2.0
-const K2 = 6.0
+const R1 = 0.9
+const R2 = 1.8
+const K2 = 8.0
 
 type Screen struct {
 	dim   int
@@ -50,13 +50,15 @@ func newScreen(d int) *Screen {
 }
 
 func (screen Screen) render(rendermode int) {
-	for i, _ := range screen.data {
-		for j, _ := range screen.data[i] {
+	for x, _ := range screen.data {
+		for y, _ := range screen.data[x] {
 			switch rendermode {
 			case 1:
-				termbox.SetCell(i, j, ' ', 0, termbox.Attribute(screen.lum24[i][j]))
+				termbox.SetCell(x*2, y, ' ', 0, termbox.Attribute(screen.lum24[x][y]))
+				termbox.SetCell(x*2-1, y, ' ', 0, termbox.Attribute(screen.lum24[x][y]))
 			default:
-				termbox.SetCell(i, j, rune(screen.data[i][j]), termbox.Attribute(screen.lum24[i][j]), 0)
+				termbox.SetCell(x*2, y, rune(screen.data[x][y]), termbox.Attribute(screen.lum24[x][y]), 0)
+				termbox.SetCell(x*2-1, y, rune(screen.data[x][y]), termbox.Attribute(screen.lum24[x][y]), 0)
 			}
 		}
 	}
@@ -121,7 +123,7 @@ func (screen *Screen) computeFrame(A, B, K1 float64) {
 				if ooz > (*zbuffer)[yp][xp] {
 					(*zbuffer)[yp][xp] = ooz
 					ascii_index := int(L * 8.0) // this brings L into the range 0..11 (8*sqrt(2) = 11.3)
-					lum24 := int(L*15.0) + 1    // this brings L into the range 1..24 (16*sqrt(2) + 1 = 23.6)
+					lum24 := int((L*16.0)+1)    // this brings L into the range 1..24 (16*sqrt(2) + 1 = 23.6)
 					// now we lookup the character corresponding to the luminance and plot it in our output:
 					screen.data[yp][xp] = ".,-~:;=!*#$@"[ascii_index]
 					screen.lum24[yp][xp] = lum24
