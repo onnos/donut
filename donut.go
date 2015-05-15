@@ -5,10 +5,9 @@
 // https://github.com/GaryBoone/GoDonut             (donut.go by Gary Boone)
 //
 // This version tweaks the constants a bit (to lessen the "transparent" effect), uses
-// Termbox for rendering, makes the loop interruptable and enables a sort-of-shaded mode.
+// Termbox for rendering, makes the loop interruptable and supports 23 levels of grayscale shading.
 // Hint: hit enter while running. ESCape to quit.
 //
-// 20150514 - Onno Siemens
 
 package main
 
@@ -27,8 +26,9 @@ const R2 = 2.0
 const K2 = 6.0
 
 type Screen struct {
-	dim  int
-	data [][]byte
+	dim   int
+	lum24 [][]int
+	data  [][]byte
 }
 
 func newZBuffer(d int) *[][]float64 {
@@ -41,34 +41,22 @@ func newZBuffer(d int) *[][]float64 {
 
 func newScreen(d int) *Screen {
 	b := make([][]byte, d)
+	c := make([][]int, d)
 	for i := range b {
 		b[i] = make([]byte, d)
+		c[i] = make([]int, d)
 	}
-	return &Screen{d, b}
+	return &Screen{d, c, b}
 }
 
-func (screen Screen) render(asciimode bool) {
+func (screen Screen) render(rendermode int) {
 	for i, _ := range screen.data {
 		for j, _ := range screen.data[i] {
-			// map our ascii characters to grayscale luminance levels for termbox
-			var lindex = map[byte]int{
-				'.': 5,
-				',': 7,
-				'-': 9,
-				'~': 11,
-				':': 13,
-				';': 15,
-				'=': 17,
-				'!': 18,
-				'*': 19,
-				'#': 20,
-				'$': 22,
-				'@': 24,
-			}
-			if asciimode {
-				termbox.SetCell(i, j, rune(screen.data[i][j]), termbox.Attribute(lindex[screen.data[i][j]]), 0)
-			} else {
-				termbox.SetCell(i, j, ' ', 0, termbox.Attribute(lindex[screen.data[i][j]]))
+			switch rendermode {
+			case 1:
+				termbox.SetCell(i, j, ' ', 0, termbox.Attribute(screen.lum24[i][j]))
+			default:
+				termbox.SetCell(i, j, rune(screen.data[i][j]), termbox.Attribute(screen.lum24[i][j]), 0)
 			}
 		}
 	}
@@ -80,6 +68,7 @@ func (screen *Screen) clear() {
 	for i, _ := range screen.data {
 		for j, _ := range screen.data[i] {
 			screen.data[i][j] = ' '
+			screen.lum24[i][j] = ' '
 		}
 	}
 }
@@ -131,9 +120,11 @@ func (screen *Screen) computeFrame(A, B, K1 float64) {
 				// the viewer than what's already plotted.
 				if ooz > (*zbuffer)[yp][xp] {
 					(*zbuffer)[yp][xp] = ooz
-					luminance_index := int(L * 8.0) // this brings L into the range 0..11 (8*sqrt(2) = 11.3)
+					ascii_index := int(L * 8.0) // this brings L into the range 0..11 (8*sqrt(2) = 11.3)
+					lum24 := int(L*15.0) + 1    // this brings L into the range 1..24 (16*sqrt(2) + 1 = 23.6)
 					// now we lookup the character corresponding to the luminance and plot it in our output:
-					screen.data[yp][xp] = ".,-~:;=!*#$@"[luminance_index]
+					screen.data[yp][xp] = ".,-~:;=!*#$@"[ascii_index]
+					screen.lum24[yp][xp] = lum24
 				}
 			}
 		}
@@ -157,7 +148,7 @@ func main() {
 	dim := int(math.Min(float64(w), float64(h)))
 	screen := newScreen(dim)
 	termbox.SetOutputMode(termbox.OutputGrayscale)
-	asciimode := true
+	rendermode := int(0)
 
 	// Calculate K1 based on screen size: the maximum x-distance occurs roughly at
 	// the edge of the torus, which is at x=R1+R2, z=0.  we want that to be
@@ -175,14 +166,18 @@ loop:
 				break loop
 			}
 			if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEnter {
-				asciimode = !asciimode
+				if rendermode == 1 {
+					rendermode = 0
+				} else {
+					rendermode++
+				}
 			}
 
 		default:
 			A += 0.07
 			B += 0.03
 			screen.computeFrame(A, B, K1)
-			screen.render(asciimode)
+			screen.render(rendermode)
 			termbox.Flush()
 			time.Sleep(frame_delay * time.Millisecond)
 		}
