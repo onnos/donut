@@ -54,9 +54,29 @@ func (screen Screen) render(rendermode int) {
 		for y, _ := range screen.data[x] {
 			switch rendermode {
 			case 1:
+				termbox.SetOutputMode(termbox.OutputGrayscale)
 				termbox.SetCell(x*2, y, ' ', 0, termbox.Attribute(screen.lum24[x][y]))
 				termbox.SetCell(x*2-1, y, ' ', 0, termbox.Attribute(screen.lum24[x][y]))
+			case 2:
+				termbox.SetOutputMode(termbox.Output216)
+				if screen.lum24[x][y] == ' ' {
+					termbox.SetCell(x*2, y, ' ', 0, 0)
+					termbox.SetCell(x*2-1, y, ' ', 0, 0)
+				} else {
+					termbox.SetCell(x*2, y, rune(screen.data[x][y]), termbox.Attribute(screen.lum24[x][y]), termbox.Attribute(screen.lum24[x][y]/2-1))
+					termbox.SetCell(x*2-1, y, rune(screen.data[x][y]), termbox.Attribute(screen.lum24[x][y]), termbox.Attribute(screen.lum24[x][y]/2-1))
+				}
+			case 3:
+				termbox.SetOutputMode(termbox.Output216)
+				if screen.lum24[x][y] == ' ' {
+					termbox.SetCell(x*2, y, ' ', 0, 0)
+					termbox.SetCell(x*2-1, y, ' ', 0, 0)
+				} else {
+					termbox.SetCell(x*2, y, ' ', 0, termbox.Attribute(screen.lum24[x][y]-1))
+					termbox.SetCell(x*2-1, y, ' ', 0, termbox.Attribute(screen.lum24[x][y]-1))
+				}
 			default:
+				termbox.SetOutputMode(termbox.OutputGrayscale)
 				termbox.SetCell(x*2, y, rune(screen.data[x][y]), termbox.Attribute(screen.lum24[x][y]), 0)
 				termbox.SetCell(x*2-1, y, rune(screen.data[x][y]), termbox.Attribute(screen.lum24[x][y]), 0)
 			}
@@ -122,8 +142,8 @@ func (screen *Screen) computeFrame(A, B, K1 float64) {
 				// the viewer than what's already plotted.
 				if ooz > (*zbuffer)[yp][xp] {
 					(*zbuffer)[yp][xp] = ooz
-					ascii_index := int(L * 8.0) // this brings L into the range 0..11 (8*sqrt(2) = 11.3)
-					lum24 := int((L*16.0)+1)    // this brings L into the range 1..24 (16*sqrt(2) + 1 = 23.6)
+					ascii_index := int(L * 8.0)  // this brings L into the range 0..11 (8*sqrt(2) = 11.3)
+					lum24 := int((L * 16.0) + 1) // this brings L into the range 1..24 (16*sqrt(2) + 1 = 23.6)
 					// now we lookup the character corresponding to the luminance and plot it in our output:
 					screen.data[yp][xp] = ".,-~:;=!*#$@"[ascii_index]
 					screen.lum24[yp][xp] = lum24
@@ -149,7 +169,6 @@ func main() {
 	w, h := termbox.Size()
 	dim := int(math.Min(float64(w), float64(h)))
 	screen := newScreen(dim)
-	termbox.SetOutputMode(termbox.OutputGrayscale)
 	rendermode := int(0)
 
 	// Calculate K1 based on screen size: the maximum x-distance occurs roughly at
@@ -168,7 +187,7 @@ loop:
 				break loop
 			}
 			if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEnter {
-				if rendermode == 1 {
+				if rendermode == 3 {
 					rendermode = 0
 				} else {
 					rendermode++
