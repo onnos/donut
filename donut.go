@@ -4,8 +4,8 @@
 // http://www.a1k0n.net/2011/07/20/donut-math.html  (original by Andy Sloane)
 // https://github.com/GaryBoone/GoDonut             (donut.go by Gary Boone)
 //
-// This version tweaks the constants a bit (to lessen the "transparent" effect), uses
-// Termbox for rendering, makes the loop interruptable and supports 23 levels of grayscale shading.
+// This termbox version by Onno Siemens.
+//
 // Hint: hit enter while running. ESCape to quit.
 //
 
@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-const frame_delay = 10
+const frame_delay = 20
 const theta_spacing = 0.02
 const phi_spacing = 0.02
 
@@ -26,9 +26,10 @@ const R2 = 1.8
 const K2 = 8.0
 
 type Screen struct {
-	dim   int
-	lum24 [][]int
-	data  [][]byte
+	dim    int
+	lum24  [][]int
+	data   [][]byte
+	buffer int
 }
 
 func newZBuffer(d int) *[][]float64 {
@@ -46,7 +47,8 @@ func newScreen(d int) *Screen {
 		b[i] = make([]byte, d)
 		c[i] = make([]int, d)
 	}
-	return &Screen{d, c, b}
+	a := int(0)
+	return &Screen{d, c, b, a}
 }
 
 func (screen Screen) render(rendermode int) {
@@ -55,35 +57,34 @@ func (screen Screen) render(rendermode int) {
 			switch rendermode {
 			case 1:
 				termbox.SetOutputMode(termbox.OutputGrayscale)
-				termbox.SetCell(x*2, y, ' ', 0, termbox.Attribute(screen.lum24[x][y]))
-				termbox.SetCell(x*2-1, y, ' ', 0, termbox.Attribute(screen.lum24[x][y]))
+				screen.draw(x, y, ' ', screen.lum24[x][y], screen.lum24[x][y])
 			case 2:
 				termbox.SetOutputMode(termbox.Output216)
 				if screen.lum24[x][y] == ' ' {
-					termbox.SetCell(x*2, y, ' ', 0, 0)
-					termbox.SetCell(x*2-1, y, ' ', 0, 0)
+					screen.draw(x, y, ' ', 0, 0)
 				} else {
-					termbox.SetCell(x*2, y, rune(screen.data[x][y]), termbox.Attribute(screen.lum24[x][y]), termbox.Attribute(screen.lum24[x][y]/2-1))
-					termbox.SetCell(x*2-1, y, rune(screen.data[x][y]), termbox.Attribute(screen.lum24[x][y]), termbox.Attribute(screen.lum24[x][y]/2-1))
+					screen.draw(x, y, rune(screen.data[x][y]), screen.lum24[x][y]/3+1, screen.lum24[x][y]/4)
 				}
 			case 3:
 				termbox.SetOutputMode(termbox.Output216)
 				if screen.lum24[x][y] == ' ' {
-					termbox.SetCell(x*2, y, ' ', 0, 0)
-					termbox.SetCell(x*2-1, y, ' ', 0, 0)
+					screen.draw(x, y, ' ', 0, 0)
 				} else {
-					termbox.SetCell(x*2, y, ' ', 0, termbox.Attribute(screen.lum24[x][y]-1))
-					termbox.SetCell(x*2-1, y, ' ', 0, termbox.Attribute(screen.lum24[x][y]-1))
+					screen.draw(x, y, ' ', 0, screen.lum24[x][y]/2+1)
 				}
 			default:
 				termbox.SetOutputMode(termbox.OutputGrayscale)
-				termbox.SetCell(x*2, y, rune(screen.data[x][y]), termbox.Attribute(screen.lum24[x][y]), 0)
-				termbox.SetCell(x*2-1, y, rune(screen.data[x][y]), termbox.Attribute(screen.lum24[x][y]), 0)
+				screen.draw(x, y, rune(screen.data[x][y]), screen.lum24[x][y], 0)
 			}
 		}
 	}
 	screen.clear()
 
+}
+
+func (screen *Screen) draw(x,y int,char rune,fg,bg int) {
+	termbox.SetCell(x*2,y,char,termbox.Attribute(fg),termbox.Attribute(bg))
+	termbox.SetCell(x*2-1,y,char,termbox.Attribute(fg),termbox.Attribute(bg))
 }
 
 func (screen *Screen) clear() {
