@@ -53,29 +53,28 @@ func newScreen(d int) *Screen {
 	return &Screen{d, c, b, a, z}
 }
 
-func (screen Screen) render(rendermode int) {
+func (screen *Screen) render(rendermode int) {
+	switch rendermode {
+	case 1:
+		termbox.SetOutputMode(termbox.OutputGrayscale)
+	case 2:
+		termbox.SetOutputMode(termbox.Output216)
+	case 3:
+		termbox.SetOutputMode(termbox.Output216)
+	default:
+		termbox.SetOutputMode(termbox.OutputGrayscale)
+	}
 	for x, _ := range screen.data {
 		for y, _ := range screen.data[x] {
-			if screen.lum24[x][y] == ' ' {
-				screen.draw(x, y, ' ', 0, 0)
-			} else {
-				switch rendermode {
-				case 1:
-					termbox.SetOutputMode(termbox.OutputGrayscale)
-					screen.draw(x, y, ' ', screen.lum24[x][y], screen.lum24[x][y])
-				case 2:
-					termbox.SetOutputMode(termbox.OutputGrayscale)
-					screen.draw(x, y, ' ', screen.lum24[x][y], screen.lum24[x][y]+250)
-				case 3:
-					termbox.SetOutputMode(termbox.Output216)
-					screen.draw(x, y, rune(screen.data[x][y]), screen.lum24[x][y]/3+1, screen.lum24[x][y]/4)
-				case 4:
-					termbox.SetOutputMode(termbox.Output216)
-					screen.draw(x, y, ' ', 0, screen.lum24[x][y])
-				default:
-					termbox.SetOutputMode(termbox.OutputGrayscale)
-					screen.draw(x, y, rune(screen.data[x][y]), screen.lum24[x][y], 0)
-				}
+			switch rendermode {
+			case 1:
+				screen.draw(x, y, ' ', screen.lum24[x][y], screen.lum24[x][y])
+			case 2:
+				screen.draw(x, y, rune(screen.data[x][y]), screen.lum24[x][y]/3+1, screen.lum24[x][y]/4)
+			case 3:
+				screen.draw(x, y, ' ', 0, screen.lum24[x][y])
+			default:
+				screen.draw(x, y, rune(screen.data[x][y]), screen.lum24[x][y], 0)
 			}
 		}
 	}
@@ -88,10 +87,14 @@ func (screen *Screen) draw(x, y int, char rune, fg, bg int) {
 }
 
 func (screen *Screen) clear() {
-	for i, _ := range screen.data {
-		for j, _ := range screen.data[i] {
-			screen.data[i][j] = ' '
-			screen.lum24[i][j] = ' '
+	for x, _ := range screen.data {
+		for y, _ := range screen.data[x] {
+			if screen.lum24[x][y] == ' ' {
+				screen.draw(x, y, ' ', 0, 0)
+			} else {
+				screen.data[x][y] = ' '
+				screen.lum24[x][y] = ' '
+			}
 		}
 	}
 }
@@ -205,21 +208,21 @@ loop:
 
 			// zoom out if transitioning to new rendermode
 			if screen.transition == 1 {
-				K1--
+				K1 -= 2
 			}
 			// all the way zoomed out, switch rendermodes
 			if K1 < 0 {
 				screen.transition = 2
+				rendermode++
+				K1++
 				if rendermode == 4 {
 					rendermode = 0
-				} else {
-					rendermode++
 				}
 			}
 			// zoom back in
 			if screen.transition == 2 {
 				if K1 < screen.zoom {
-					K1++
+					K1 += 1.5
 				}
 				if K1 >= screen.zoom {
 					K1 = screen.zoom
