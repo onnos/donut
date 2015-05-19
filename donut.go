@@ -26,10 +26,11 @@ const R2 = 1.8
 const K2 = 8.0
 
 type Screen struct {
-	dim    int
-	lum24  [][]int
-	data   [][]byte
-	buffer int
+	dim        int
+	lum24      [][]int
+	data       [][]byte
+	zoom       float64
+	transition int
 }
 
 func newZBuffer(d int) *[][]float64 {
@@ -47,44 +48,43 @@ func newScreen(d int) *Screen {
 		b[i] = make([]byte, d)
 		c[i] = make([]int, d)
 	}
-	a := int(0)
-	return &Screen{d, c, b, a}
+	a := float64(0)
+	z := int(0)
+	return &Screen{d, c, b, a, z}
 }
 
 func (screen Screen) render(rendermode int) {
 	for x, _ := range screen.data {
 		for y, _ := range screen.data[x] {
-			switch rendermode {
-			case 1:
-				termbox.SetOutputMode(termbox.OutputGrayscale)
-				screen.draw(x, y, ' ', screen.lum24[x][y], screen.lum24[x][y])
-			case 2:
-				termbox.SetOutputMode(termbox.Output216)
-				if screen.lum24[x][y] == ' ' {
-					screen.draw(x, y, ' ', 0, 0)
-				} else {
+			if screen.lum24[x][y] == ' ' {
+				screen.draw(x, y, ' ', 0, 0)
+			} else {
+				switch rendermode {
+				case 1:
+					termbox.SetOutputMode(termbox.OutputGrayscale)
+					screen.draw(x, y, ' ', screen.lum24[x][y], screen.lum24[x][y])
+				case 2:
+					termbox.SetOutputMode(termbox.OutputGrayscale)
+					screen.draw(x, y, ' ', screen.lum24[x][y], screen.lum24[x][y]+250)
+				case 3:
+					termbox.SetOutputMode(termbox.Output216)
 					screen.draw(x, y, rune(screen.data[x][y]), screen.lum24[x][y]/3+1, screen.lum24[x][y]/4)
+				case 4:
+					termbox.SetOutputMode(termbox.Output216)
+					screen.draw(x, y, ' ', 0, screen.lum24[x][y])
+				default:
+					termbox.SetOutputMode(termbox.OutputGrayscale)
+					screen.draw(x, y, rune(screen.data[x][y]), screen.lum24[x][y], 0)
 				}
-			case 3:
-				termbox.SetOutputMode(termbox.Output216)
-				if screen.lum24[x][y] == ' ' {
-					screen.draw(x, y, ' ', 0, 0)
-				} else {
-					screen.draw(x, y, ' ', 0, screen.lum24[x][y]/2+1)
-				}
-			default:
-				termbox.SetOutputMode(termbox.OutputGrayscale)
-				screen.draw(x, y, rune(screen.data[x][y]), screen.lum24[x][y], 0)
 			}
 		}
 	}
 	screen.clear()
-
 }
 
-func (screen *Screen) draw(x,y int,char rune,fg,bg int) {
-	termbox.SetCell(x*2,y,char,termbox.Attribute(fg),termbox.Attribute(bg))
-	termbox.SetCell(x*2-1,y,char,termbox.Attribute(fg),termbox.Attribute(bg))
+func (screen *Screen) draw(x, y int, char rune, fg, bg int) {
+	termbox.SetCell(x*2, y, char, termbox.Attribute(fg), termbox.Attribute(bg))
+	termbox.SetCell(x*2-1, y, char, termbox.Attribute(fg), termbox.Attribute(bg))
 }
 
 func (screen *Screen) clear() {
@@ -171,14 +171,20 @@ func main() {
 	dim := int(math.Min(float64(w), float64(h)))
 	screen := newScreen(dim)
 	rendermode := int(0)
+	termbox.SetOutputMode(termbox.OutputGrayscale)
 
 	// Calculate K1 based on screen size: the maximum x-distance occurs roughly at
 	// the edge of the torus, which is at x=R1+R2, z=0.  we want that to be
 	// displaced 3/8ths of the width of the screen, which is 3/4th of the way from
 	// the center to the side of the screen.
-	// screen_width*3/8 = K1*(R1+R2)/(K2+0)
-	// screen_width*K2*3/(8*(R1+R2)) = K1
+	//screen.dim*3/8 = K1*(R1+R2)/(K2+0)
+	//screen.dim*K2*3/(8*(R1+R2)) = K1
 	A, B, K1 := 1.0, 1.0, float64(screen.dim)*K2*3.0/(8.0*(R1+R2))
+
+	// start zoomed out
+	screen.zoom = K1
+	K1 = 0
+	screen.transition = 2
 
 loop:
 	for {
@@ -188,16 +194,39 @@ loop:
 				break loop
 			}
 			if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEnter {
-				if rendermode == 3 {
+
+				screen.transition = 1
+			}
+
+		default:
+			// rotate the torus
+			A += 0.07
+			B += 0.03
+
+			// zoom out if transitioning to new rendermode
+			if screen.transition == 1 {
+				K1--
+			}
+			// all the way zoomed out, switch rendermodes
+			if K1 < 0 {
+				screen.transition = 2
+				if rendermode == 4 {
 					rendermode = 0
 				} else {
 					rendermode++
 				}
 			}
-
-		default:
-			A += 0.07
-			B += 0.03
+			// zoom back in
+			if screen.transition == 2 {
+				if K1 < screen.zoom {
+					K1++
+				}
+				if K1 >= screen.zoom {
+					K1 = screen.zoom
+					screen.transition = 0
+				}
+			}
+			// draw all the things
 			screen.computeFrame(A, B, K1)
 			screen.render(rendermode)
 			termbox.Flush()
