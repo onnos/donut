@@ -17,9 +17,9 @@ import (
 	"time"
 )
 
-const frame_delay = 20
-const theta_spacing = 0.02
-const phi_spacing = 0.02
+const framedelay = 20
+const thetaspacing = 0.02
+const phispacing = 0.02
 
 const R1 = 0.9
 const R2 = 1.8
@@ -110,13 +110,13 @@ func (screen *Screen) computeFrame(A, B, K1 float64) {
 	zbuffer := newZBuffer(screen.dim)
 
 	// theta goes around the cross-sectional circle of a torus
-	for theta := 0.0; theta < 2.0*math.Pi; theta += theta_spacing {
+	for theta := 0.0; theta < 2.0*math.Pi; theta += thetaspacing {
 		// precompute sines and cosines of theta
 		costheta := math.Cos(theta)
 		sintheta := math.Sin(theta)
 
 		// phi goes around the center of revolution of a torus
-		for phi := 0.0; phi < 2.0*math.Pi; phi += phi_spacing {
+		for phi := 0.0; phi < 2.0*math.Pi; phi += phispacing {
 			// precompute sines and cosines of phi
 			cosphi := math.Cos(phi)
 			sinphi := math.Sin(phi)
@@ -146,10 +146,10 @@ func (screen *Screen) computeFrame(A, B, K1 float64) {
 				// the viewer than what's already plotted.
 				if ooz > (*zbuffer)[yp][xp] {
 					(*zbuffer)[yp][xp] = ooz
-					ascii_index := int(L * 8.0)  // this brings L into the range 0..11 (8*sqrt(2) = 11.3)
+					asciiIndex := int(L * 8.0)  // this brings L into the range 0..11 (8*sqrt(2) = 11.3)
 					lum24 := int((L * 16.0) + 1) // this brings L into the range 1..24 (16*sqrt(2) + 1 = 23.6)
 					// now we lookup the character corresponding to the luminance and plot it in our output:
-					screen.data[yp][xp] = ".,-~:;=!*#$@"[ascii_index]
+					screen.data[yp][xp] = ".,-~:;=!*#$@"[asciiIndex]
 					screen.lum24[yp][xp] = lum24
 				}
 			}
@@ -164,10 +164,10 @@ func main() {
 	}
 	defer termbox.Close()
 
-	event_queue := make(chan termbox.Event)
+	eventQueue := make(chan termbox.Event)
 	go func() {
 		for {
-			event_queue <- termbox.PollEvent()
+			eventQueue <- termbox.PollEvent()
 		}
 	}()
 	w, h := termbox.Size()
@@ -192,7 +192,7 @@ func main() {
 loop:
 	for {
 		select {
-		case ev := <-event_queue:
+		case ev := <-eventQueue:
 			if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEsc {
 				break loop
 			}
@@ -233,7 +233,7 @@ loop:
 			screen.computeFrame(A, B, K1)
 			screen.render(rendermode)
 			termbox.Flush()
-			time.Sleep(frame_delay * time.Millisecond)
+			time.Sleep(framedelay * time.Millisecond)
 		}
 	}
 }
